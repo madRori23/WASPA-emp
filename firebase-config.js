@@ -16,6 +16,43 @@ try {
     console.error('Firebase initialization error:', error);
 }
 
+    window.db = db;
+    window.auth = auth;
+    window.firebase = firebase;
+    
+    console.log('✅ Firebase services initialized:', { db, auth });
+    
+    // Test connection
+    testFirebaseConnection();
+    
+} catch (error) {
+    console.error('❌ Firebase initialization failed:', error);
+}
+
+// Test Firebase connection
+async function testFirebaseConnection() {
+    try {
+        console.log('🧪 Testing Firebase connection...');
+        
+        // Try a simple write operation
+        const testRef = await db.collection('connectionTests').add({
+            test: true,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            message: 'Connection test from WASPA portal'
+        });
+        
+        console.log('✅ Firebase connection test PASSED - Document ID:', testRef.id);
+        
+        // Clean up test document
+        await testRef.delete();
+        console.log('🧹 Test document cleaned up');
+        
+    } catch (error) {
+        console.error('❌ Firebase connection test FAILED:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+    }
+}
 // Initialize Firebase services
 const db = firebase.firestore();
 const auth = firebase.auth();
@@ -54,5 +91,6 @@ const handleFirebaseError = (error) => {
     
     return message;
 };
+
 
 
