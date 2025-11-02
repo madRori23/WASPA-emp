@@ -1,4 +1,3 @@
-// data.js - Data management with Firebase
 class DataManager {
     constructor() {
         this.currentUser = null;
@@ -6,14 +5,49 @@ class DataManager {
         this.warnings = [];
         this.listeners = [];
         this.isInitialized = false;
+        this.firebaseReady = false;
         
-        this.init();
+        // Wait for Firebase to be ready before initializing
+        this.waitForFirebase().then(() => {
+            this.init();
+        }).catch(error => {
+            console.error('❌ Failed to initialize Firebase:', error);
+        });
+    }
+
+    // Wait for Firebase to be available globally
+    async waitForFirebase() {
+        const maxWaitTime = 10000; // 10 seconds
+        const startTime = Date.now();
+        
+        console.log('⏳ Waiting for Firebase services...');
+        
+        while (Date.now() - startTime < maxWaitTime) {
+            // Check if Firebase services are available globally
+            if (window.auth && window.db && window.COLLECTIONS) {
+                console.log('✅ Firebase services available');
+                this.firebaseReady = true;
+                return;
+            }
+            // Wait 100ms and check again
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        throw new Error('Firebase initialization timeout - services not available after 10 seconds');
     }
 
     async init() {
+        if (!this.firebaseReady) {
+            console.error('Firebase not ready, cannot initialize DataManager');
+            return;
+        }
+
+        console.log('🚀 Initializing DataManager...');
+
         // Wait for auth state to be determined
         return new Promise((resolve) => {
             auth.onAuthStateChanged(async (user) => {
+                console.log('🔐 Auth state changed:', user ? 'User logged in' : 'No user');
                 if (user) {
                     this.currentUser = {
                         uid: user.uid,
@@ -28,6 +62,7 @@ class DataManager {
                     this.warnings = [];
                 }
                 this.isInitialized = true;
+                console.log('✅ DataManager initialized successfully');
                 resolve();
             });
         });
@@ -38,6 +73,7 @@ class DataManager {
 
         try {
             showLoading();
+            console.log('📦 Loading user data...');
             
             // Load tests
             const testsSnapshot = await db.collection(COLLECTIONS.TESTS)
@@ -50,6 +86,8 @@ class DataManager {
                 ...doc.data()
             }));
 
+            console.log(`📊 Loaded ${this.tests.length} tests`);
+
             // Load warnings
             const warningsSnapshot = await db.collection(COLLECTIONS.WARNINGS)
                 .where('userId', '==', this.currentUser.uid)
@@ -61,9 +99,11 @@ class DataManager {
                 ...doc.data()
             }));
 
+            console.log(`⚠️ Loaded ${this.warnings.length} warnings`);
+
             this.notifyListeners();
         } catch (error) {
-            console.error('Error loading data:', error);
+            console.error('❌ Error loading data:', error);
             throw error;
         } finally {
             hideLoading();
@@ -72,15 +112,24 @@ class DataManager {
 
     // User authentication methods
     async authenticateUser(email, password) {
+        if (!this.firebaseReady) {
+            throw new Error('Authentication service not ready. Please refresh the page.');
+        }
+
         try {
             showLoading();
+            console.log('🔐 Authenticating user...');
+            
             const userCredential = await auth.signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
             
+            console.log('✅ User authenticated:', user.email);
+
             // Check if user exists in users collection, if not create them
             const userDoc = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
             
             if (!userDoc.exists) {
+                console.log('👤 Creating new user document...');
                 await db.collection(COLLECTIONS.USERS).doc(user.uid).set({
                     email: user.email,
                     name: user.displayName || user.email.split('@')[0],
@@ -100,23 +149,52 @@ class DataManager {
                 name: user.displayName || user.email.split('@')[0]
             };
         } catch (error) {
-            console.error('Authentication error:', error);
-            throw error;
+            console.error('❌ Authentication error:', error);
+            
+            // Provide user-friendly error messages
+            let userMessage = 'Authentication failed. Please try again.';
+            
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    userMessage = 'No account found with this email.';
+                    break;
+                case 'auth/wrong-password':
+                    userMessage = 'Incorrect password. Please try again.';
+                    break;
+                case 'auth/invalid-email':
+                    userMessage = 'Please enter a valid email address.';
+                    break;
+                case 'auth/user-disabled':
+                    userMessage = 'This account has been disabled.';
+                    break;
+            }
+            
+            throw new Error(userMessage);
         } finally {
             hideLoading();
         }
     }
 
     async registerUser(email, password, name) {
+        if (!this.firebaseReady) {
+            throw new Error('Registration service not ready. Please refresh the page.');
+        }
+
         try {
             showLoading();
+            console.log('👤 Starting user registration...');
+            
             const userCredential = await auth.createUserWithEmailAndPassword(email, password);
             const user = userCredential.user;
             
+            console.log('✅ User created:', user.uid);
+
             // Update profile
             await user.updateProfile({
                 displayName: name
             });
+            
+            console.log('📝 Creating user document...');
             
             // Create user document
             await db.collection(COLLECTIONS.USERS).doc(user.uid).set({
@@ -126,14 +204,41 @@ class DataManager {
                 lastLogin: firebase.firestore.FieldValue.serverTimestamp()
             });
             
+            console.log('🎉 User registration completed successfully');
+            
             return {
                 uid: user.uid,
                 email: user.email,
                 name: name
             };
         } catch (error) {
-            console.error('Registration error:', error);
-            throw error;
+            console.error('❌ Registration error:', {
+                code: error.code,
+                message: error.message
+            });
+            
+            // Provide user-friendly error messages
+            let userMessage = 'Registration failed. Please try again.';
+            
+            switch (error.code) {
+                case 'auth/email-already-in-use':
+                    userMessage = 'This email is already registered.';
+                    break;
+                case 'auth/invalid-email':
+                    userMessage = 'Please enter a valid email address.';
+                    break;
+                case 'auth/operation-not-allowed':
+                    userMessage = 'Email/password accounts are not enabled. Please contact support.';
+                    break;
+                case 'auth/weak-password':
+                    userMessage = 'Password is too weak. Please use at least 6 characters.';
+                    break;
+                case 'auth/configuration-not-found':
+                    userMessage = 'Authentication service is not configured properly. Please refresh the page.';
+                    break;
+            }
+            
+            throw new Error(userMessage);
         } finally {
             hideLoading();
         }
@@ -149,13 +254,16 @@ class DataManager {
 
     async logout() {
         try {
+            console.log('🚪 Logging out...');
             await auth.signOut();
             this.currentUser = null;
             this.tests = [];
             this.warnings = [];
+            this.cleanupListeners();
             this.notifyListeners();
+            console.log('✅ Logout successful');
         } catch (error) {
-            console.error('Logout error:', error);
+            console.error('❌ Logout error:', error);
             throw error;
         }
     }
@@ -166,7 +274,13 @@ class DataManager {
     }
 
     notifyListeners() {
-        this.listeners.forEach(callback => callback());
+        this.listeners.forEach(callback => {
+            try {
+                callback();
+            } catch (error) {
+                console.error('Listener error:', error);
+            }
+        });
     }
 
     // Test methods
@@ -189,12 +303,10 @@ class DataManager {
             const docRef = await db.collection(COLLECTIONS.TESTS).add(test);
             test.id = docRef.id;
             
-            // Don't add to local array here - real-time listener will handle it
-            this.notifyListeners();
-            
+            console.log('✅ Test added:', test.id);
             return test;
         } catch (error) {
-            console.error('Error adding test:', error);
+            console.error('❌ Error adding test:', error);
             throw error;
         } finally {
             hideLoading();
@@ -230,10 +342,9 @@ class DataManager {
             });
             
             await batch.commit();
-            
-            // Local array will be updated by real-time listener
+            console.log('✅ Tests cleared successfully');
         } catch (error) {
-            console.error('Error clearing tests:', error);
+            console.error('❌ Error clearing tests:', error);
             throw error;
         } finally {
             hideLoading();
@@ -261,12 +372,10 @@ class DataManager {
             const docRef = await db.collection(COLLECTIONS.WARNINGS).add(warning);
             warning.id = docRef.id;
             
-            // Don't add to local array here - real-time listener will handle it
-            this.notifyListeners();
-            
+            console.log('✅ Warning added:', warning.id);
             return warning;
         } catch (error) {
-            console.error('Error adding warning:', error);
+            console.error('❌ Error adding warning:', error);
             throw error;
         } finally {
             hideLoading();
@@ -302,10 +411,9 @@ class DataManager {
             });
             
             await batch.commit();
-            
-            // Local array will be updated by real-time listener
+            console.log('✅ Warnings cleared successfully');
         } catch (error) {
-            console.error('Error clearing warnings:', error);
+            console.error('❌ Error clearing warnings:', error);
             throw error;
         } finally {
             hideLoading();
@@ -316,6 +424,8 @@ class DataManager {
     setupRealTimeListeners() {
         if (!this.currentUser) return;
 
+        console.log('👂 Setting up real-time listeners...');
+
         // Real-time tests listener
         this.testsUnsubscribe = db.collection(COLLECTIONS.TESTS)
             .where('userId', '==', this.currentUser.uid)
@@ -325,9 +435,10 @@ class DataManager {
                     id: doc.id,
                     ...doc.data()
                 }));
+                console.log(`📊 Real-time tests update: ${this.tests.length} tests`);
                 this.notifyListeners();
             }, (error) => {
-                console.error('Tests real-time listener error:', error);
+                console.error('❌ Tests real-time listener error:', error);
             });
 
         // Real-time warnings listener
@@ -339,14 +450,16 @@ class DataManager {
                     id: doc.id,
                     ...doc.data()
                 }));
+                console.log(`⚠️ Real-time warnings update: ${this.warnings.length} warnings`);
                 this.notifyListeners();
             }, (error) => {
-                console.error('Warnings real-time listener error:', error);
+                console.error('❌ Warnings real-time listener error:', error);
             });
     }
 
     // Cleanup listeners
     cleanupListeners() {
+        console.log('🧹 Cleaning up listeners...');
         if (this.testsUnsubscribe) {
             this.testsUnsubscribe();
         }
@@ -438,5 +551,12 @@ class DataManager {
     }
 }
 
-// Initialize global data manager
-const dataManager = new DataManager();
+// Initialize global data manager with error handling
+let dataManager;
+
+try {
+    dataManager = new DataManager();
+    console.log('✅ DataManager instance created');
+} catch (error) {
+    console.error('❌ DataManager creation failed:', error);
+}
