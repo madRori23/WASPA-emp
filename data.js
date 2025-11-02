@@ -10,24 +10,10 @@ class DataManager {
         this.init();
     }
 
-    if (typeof auth === 'undefined' || typeof db === 'undefined') {
-      console.error('Firebase not initialized');
-      // Retry initialization after a short delay
-      setTimeout(() => {
-        if (typeof auth !== 'undefined' && typeof db !== 'undefined') {
-          this.init();
-        }
-      }, 1000);
-      return;
-    }
-    
-    this.init();
-  }
-
     async init() {
         // Wait for auth state to be determined
         return new Promise((resolve) => {
-            onAuthStateChanged(async (user) => {
+            auth.onAuthStateChanged(async (user) => {
                 if (user) {
                     this.currentUser = {
                         uid: user.uid,
@@ -454,5 +440,3 @@ class DataManager {
 
 // Initialize global data manager
 const dataManager = new DataManager();
-
-
