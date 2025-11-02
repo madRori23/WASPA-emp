@@ -1,6 +1,7 @@
 // firebase-config.js - Firebase configuration and initialization
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
     apiKey: "AIzaSyD6_csrO5MIn7F9cSE1-kHDrn0BGSBTbLo",
@@ -99,6 +100,7 @@ const handleFirebaseError = (error) => {
     
     return message;
 };
+
 
 
 
