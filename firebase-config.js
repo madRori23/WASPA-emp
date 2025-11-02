@@ -10,11 +10,14 @@ const firebaseConfig = {
 
 // Initialize Firebase
 try {
-    firebase.initializeApp(firebaseConfig);
-    console.log('Firebase initialized successfully');
-} catch (error) {
-    console.error('Firebase initialization error:', error);
-}
+  if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+        console.log('🔥 Firebase initialized successfully');
+    } else {
+        firebase.app(); // if already initialized, use that one
+        console.log('🔥 Firebase already initialized');
+    }
+
 
     window.db = db;
     window.auth = auth;
@@ -91,6 +94,7 @@ const handleFirebaseError = (error) => {
     
     return message;
 };
+
 
 
 
