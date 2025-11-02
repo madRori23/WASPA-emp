@@ -1,4 +1,4 @@
-// warnings.js - Warning management functionality (localStorage only)
+// warnings.js - Warning management functionality with Firebase
 class WarningsManager {
     constructor() {
         this.warningForm = document.getElementById('warningForm');
@@ -12,11 +12,13 @@ class WarningsManager {
         this.warningForm.addEventListener('submit', (e) => this.handleWarningSubmit(e));
         this.clearWarningsBtn.addEventListener('click', () => this.handleClearWarnings());
         
+        // Load warnings when data is available
+        dataManager.addListener(() => this.loadWarnings());
         this.loadWarnings();
         this.setDefaultDate();
     }
 
-    handleWarningSubmit(e) {
+    async handleWarningSubmit(e) {
         e.preventDefault();
         
         const warningData = {
@@ -34,16 +36,10 @@ class WarningsManager {
         }
 
         try {
-            const warning = dataManager.addWarning(warningData);
-            this.addWarningToList(warning);
+            await dataManager.addWarning(warningData);
             this.warningForm.reset();
             this.setDefaultDate();
             
-            // Update stats
-            if (typeof dashboardManager !== 'undefined') {
-                dashboardManager.updateStats();
-            }
-
             // Show success message
             this.showMessage('Warning record added successfully!', 'success');
         } catch (error) {
@@ -67,16 +63,10 @@ class WarningsManager {
         return true;
     }
 
-    handleClearWarnings() {
+    async handleClearWarnings() {
         if (confirm('Are you sure you want to clear all warning records? This action cannot be undone.')) {
             try {
-                dataManager.clearWarnings();
-                this.loadWarnings();
-                
-                if (typeof dashboardManager !== 'undefined') {
-                    dashboardManager.updateStats();
-                }
-                
+                await dataManager.clearWarnings();
                 this.showMessage('All warning records cleared', 'success');
             } catch (error) {
                 console.error('Error clearing warnings:', error);
@@ -86,13 +76,8 @@ class WarningsManager {
     }
 
     loadWarnings() {
-        try {
-            const warnings = dataManager.getWarnings();
-            this.renderWarningsList(warnings);
-        } catch (error) {
-            console.error('Error loading warnings:', error);
-            this.showMessage('Failed to load warning records', 'error');
-        }
+        const warnings = dataManager.getWarnings();
+        this.renderWarningsList(warnings);
     }
 
     renderWarningsList(warnings) {
@@ -102,7 +87,7 @@ class WarningsManager {
         }
 
         this.warningsList.innerHTML = warnings.map(warning => `
-            <div class="record-item">
+            <div class="record-item warning">
                 <div class="record-header">
                     <div class="record-title">${warning.reference} - ${this.formatWarningType(warning.type)}</div>
                     <div class="record-date">${this.formatDate(warning.date)}</div>
@@ -117,33 +102,6 @@ class WarningsManager {
                 </div>
             </div>
         `).join('');
-    }
-
-    addWarningToList(warning) {
-        const recordItem = document.createElement('div');
-        recordItem.className = 'record-item';
-        recordItem.innerHTML = `
-            <div class="record-header">
-                <div class="record-title">${warning.reference} - ${this.formatWarningType(warning.type)}</div>
-                <div class="record-date">${this.formatDate(warning.date)}</div>
-            </div>
-            <div class="record-details">
-                <div class="record-recipient"><strong>To:</strong> ${warning.recipient}</div>
-                <div class="record-description">${warning.details}</div>
-                <div class="record-problem-areas"><strong>Code Violations:</strong> ${warning.problemAreas}</div>
-                <div class="record-meta">
-                    <span class="record-by">by ${warning.createdBy}</span>
-                </div>
-            </div>
-        `;
-        
-        // Remove empty state if it exists
-        if (this.warningsList.querySelector('.empty-state')) {
-            this.warningsList.innerHTML = '';
-        }
-        
-        // Add new warning to the top of the list
-        this.warningsList.insertBefore(recordItem, this.warningsList.firstChild);
     }
 
     formatWarningType(type) {
@@ -193,40 +151,6 @@ class WarningsManager {
                 }
             }, 3000);
         }
-    }
-
-    // Search and filter functionality
-    searchWarnings(query) {
-        const warnings = dataManager.getWarnings();
-        const filteredWarnings = warnings.filter(warning => 
-            warning.reference.toLowerCase().includes(query.toLowerCase()) ||
-            warning.recipient.toLowerCase().includes(query.toLowerCase()) ||
-            warning.details.toLowerCase().includes(query.toLowerCase()) ||
-            warning.problemAreas.toLowerCase().includes(query.toLowerCase())
-        );
-        
-        this.renderWarningsList(filteredWarnings);
-    }
-
-    // Get warnings by date range
-    getWarningsByDateRange(startDate, endDate) {
-        const warnings = dataManager.getWarnings();
-        return warnings.filter(warning => {
-            const warningDate = new Date(warning.date);
-            return warningDate >= new Date(startDate) && warningDate <= new Date(endDate);
-        });
-    }
-
-    // Get warnings by type
-    getWarningsByType(type) {
-        const warnings = dataManager.getWarnings();
-        return warnings.filter(warning => warning.type === type);
-    }
-
-    // Get warnings by recipient
-    getWarningsByRecipient(recipient) {
-        const warnings = dataManager.getWarnings();
-        return warnings.filter(warning => warning.recipient === recipient);
     }
 }
 

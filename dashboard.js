@@ -9,15 +9,16 @@ class DashboardManager {
 
     init() {
         this.setupTabNavigation();
-        this.updateStats();
+        this.setupDataListeners();
         this.setDefaultDates();
         
-        // Update stats when navigating back to dashboard
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                this.updateStats();
-            }
+        // Update stats when data changes
+        dataManager.addListener(() => {
+            this.updateStats();
         });
+        
+        // Initial stats update
+        this.updateStats();
     }
 
     setupTabNavigation() {
@@ -39,6 +40,10 @@ class DashboardManager {
         });
     }
 
+    setupDataListeners() {
+        // Stats are updated automatically via the data manager listener
+    }
+
     updateStats() {
         const testsToday = dataManager.getTestsToday().length;
         const warningsToday = dataManager.getWarningsToday().length;
@@ -51,19 +56,40 @@ class DashboardManager {
         document.getElementById('activeDays').textContent = activeDays;
 
         // Update export stats
-        document.getElementById('exportTestCount').textContent = totalTests;
+        this.updateExportStats();
+    }
+
+    updateExportStats() {
+        document.getElementById('exportTestCount').textContent = dataManager.getTests().length;
         document.getElementById('exportWarningCount').textContent = dataManager.getWarnings().length;
         document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+        
+        // Track last export
+        const lastExport = localStorage.getItem('waspa_last_export');
+        document.getElementById('lastExportDate').textContent = lastExport ? 
+            new Date(lastExport).toLocaleString() : 'Never';
     }
 
     setDefaultDates() {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('testDate').value = today;
         document.getElementById('warningDate').value = today;
+        
+        // Set default export dates (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        document.getElementById('exportStartDate').value = thirtyDaysAgo.toISOString().split('T')[0];
+        document.getElementById('exportEndDate').value = today;
+    }
+
+    // Call this when exports happen
+    recordExport() {
+        localStorage.setItem('waspa_last_export', new Date().toISOString());
+        this.updateExportStats();
     }
 }
 
 // Initialize dashboard manager when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new DashboardManager();
+    window.dashboardManager = new DashboardManager();
 });
