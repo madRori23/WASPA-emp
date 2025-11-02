@@ -1,8 +1,4 @@
 // firebase-config.js - Firebase configuration and initialization
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from 'firebase/auth';
-
-// firebase-config.js - Firebase configuration and initialization
 const firebaseConfig = {
   apiKey: "AIzaSyD6_csrO5MIn7F9cSE1-kHDrn0BGSBTbLo",
   authDomain: "waspa-portal.firebaseapp.com",
@@ -106,6 +102,7 @@ window.handleFirebaseError = (error) => {
   
   return message;
 };
+
 
 
 
