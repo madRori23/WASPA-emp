@@ -13,19 +13,6 @@ class AuthManager {
         this.init();
     }
 
-    this.waitForFirebase().then(() => {
-      this.init();
-    });
-  }
-
-  async waitForFirebase() {
-    // Check if Firebase is ready, wait if not
-    while (typeof auth === 'undefined' || typeof db === 'undefined') {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    return true;
-  }
-
     async init() {
         // Wait for data manager to initialize
         await dataManager.init();
@@ -183,4 +170,3 @@ class AuthManager {
 document.addEventListener('DOMContentLoaded', () => {
     new AuthManager();
 });
-
