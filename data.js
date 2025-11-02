@@ -13,7 +13,7 @@ class DataManager {
     async init() {
         // Wait for auth state to be determined
         return new Promise((resolve) => {
-            auth.onAuthStateChanged(async (user) => {
+            onAuthStateChanged(async (user) => {
                 if (user) {
                     this.currentUser = {
                         uid: user.uid,
@@ -440,3 +440,4 @@ class DataManager {
 
 // Initialize global data manager
 const dataManager = new DataManager();
+
