@@ -1,12 +1,12 @@
 // firebase-config.js - Firebase configuration and initialization
 const firebaseConfig = {
-  apiKey: "AIzaSyD6_csrO5MIn7F9cSE1-kHDrn0BGSBTbLo",
-  authDomain: "waspa-portal.firebaseapp.com",
-  projectId: "waspa-portal",
-  storageBucket: "waspa-portal.firebasestorage.app",
-  messagingSenderId: "1084614595732",
-  appId: "1:1084614595732:web:3abdbd78ce35a27bd3d081"
-};
+    apiKey: "AIzaSyBdTWkylqrpva6uiZ0jU4m_mITncQB2--Y",
+    authDomain: "waspa-portal-77264.firebaseapp.com",
+    projectId: "waspa-portal-77264",
+    storageBucket: "waspa-portal-77264.firebasestorage.app",
+    messagingSenderId: "63736778623",
+    appId: "1:63736778623:web:b828a62a3a588e5b9ad44a"
+  };
 
 // Initialize Firebase
 try {
@@ -102,6 +102,7 @@ window.handleFirebaseError = (error) => {
   
   return message;
 };
+
 
 
 
