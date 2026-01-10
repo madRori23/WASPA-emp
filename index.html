@@ -187,6 +187,20 @@
                                         <option value="inconclusive">Inconclusive</option>
                                     </select>
                                 </div>
+								<div class="form-group file-link-section">
+				                    <label for="testFileLink">
+				                        <i class="fas fa-link"></i> File Link (Optional)
+				                    </label>
+				                    <input 
+				                        type="url" 
+				                        id="testFileLink" 
+				                        placeholder="https://drive.google.com/file/... or other file link"
+				                        pattern="https?://.*"
+				                    >
+                    				<small class="field-hint">
+                        			Paste a link to related files (Google Drive, OneDrive, etc.)
+                    				</small>
+                				</div>
                                 <button type="submit" class="btn btn-primary">Add Test Record</button>
                             </form>
                         </div>
@@ -628,6 +642,7 @@
     <script src="export.js"></script>
 </body>
 </html>
+
 
 
 
