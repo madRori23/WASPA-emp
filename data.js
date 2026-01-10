@@ -285,34 +285,34 @@ class DataManager {
 
     // Test methods
     async addTest(testData) {
-    if (!this.currentUser) throw new Error('User not authenticated');
-
-    try {
-        showLoading();
-        const test = {
-            userId: this.currentUser.uid,
-            date: testData.date,
-            type: testData.type,
-            network: testData.network,
-            description: testData.description,
-            result: testData.result,
-            fileLink: testData.fileLink || '', // Add file link field
-            createdBy: this.currentUser.email,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        const docRef = await db.collection(COLLECTIONS.TESTS).add(test);
-        test.id = docRef.id;
-        
-        console.log('✅ Test added:', test.id);
-        return test;
-    } catch (error) {
-        console.error('❌ Error adding test:', error);
-        throw error;
-    } finally {
-        hideLoading();
+        if (!this.currentUser) throw new Error('User not authenticated');
+    
+        try {
+            showLoading();
+            const test = {
+                userId: this.currentUser.uid,
+                date: testData.date,
+                type: testData.type,
+                network: testData.network,
+                description: testData.description,
+                result: testData.result,
+                fileLink: testData.fileLink || '', // Add file link field
+                createdBy: this.currentUser.email,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            const docRef = await db.collection(COLLECTIONS.TESTS).add(test);
+            test.id = docRef.id;
+            
+            console.log('✅ Test added:', test.id);
+            return test;
+        } catch (error) {
+            console.error('❌ Error adding test:', error);
+            throw error;
+        } finally {
+            hideLoading();
+        }
     }
-}
 
     getTests() {
         return this.tests;
@@ -355,7 +355,7 @@ class DataManager {
     // Warning methods
     async addWarning(warningData) {
         if (!this.currentUser) throw new Error('User not authenticated');
-
+        
         try {
             showLoading();
             const warning = {
@@ -382,7 +382,7 @@ class DataManager {
             hideLoading();
         }
     }
-
+    
     getWarnings() {
         return this.warnings;
     }
@@ -561,4 +561,5 @@ try {
 } catch (error) {
     console.error('❌ DataManager creation failed:', error);
 }
+
 
