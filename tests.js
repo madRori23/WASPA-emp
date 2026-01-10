@@ -66,6 +66,7 @@ class TestsManager {
                 this.showMessage('Please enter a valid URL for the file link', 'error');
                 return false;
             }
+        }
         return true;
     }
 
@@ -160,4 +161,5 @@ class TestsManager {
 document.addEventListener('DOMContentLoaded', () => {
     new TestsManager();
 });
+
 
