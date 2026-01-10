@@ -36,22 +36,23 @@ class ExportManager {
                 this.showExportError('No test records found to export.');
                 return;
             }
-
+    
             const worksheet = XLSX.utils.json_to_sheet(this.formatTestsForExport(tests));
             const workbook = XLSX.utils.book_new();
             
-            // Set column widths
+            // Set column widths - updated to include file link column
             const colWidths = [
                 { wch: 12 }, // Date
                 { wch: 15 }, // Type
                 { wch: 10 }, // Network
-                { wch: 50 }, // Description
+                { wch: 40 }, // Description
                 { wch: 15 }, // Result
+                { wch: 50 }, // File Link (NEW)
                 { wch: 20 }, // Created By
                 { wch: 20 }  // Created At
             ];
             worksheet['!cols'] = colWidths;
-
+    
             XLSX.utils.book_append_sheet(workbook, worksheet, "Tests");
             XLSX.writeFile(workbook, `WASPA_Tests_${this.getCurrentDate()}.xlsx`);
             
@@ -124,7 +125,8 @@ class ExportManager {
                 const testsWorksheet = XLSX.utils.json_to_sheet(this.formatTestsForExport(tests));
                 testsWorksheet['!cols'] = [
                     { wch: 12 }, { wch: 15 }, { wch: 10 }, 
-                    { wch: 50 }, { wch: 15 }, { wch: 20 }, { wch: 20 }
+                    { wch: 40 }, { wch: 15 }, { wch: 50 }, // Added column for file link
+                    { wch: 20 }, { wch: 20 }
                 ];
                 XLSX.utils.book_append_sheet(workbook, testsWorksheet, "Tests");
             }
@@ -183,7 +185,8 @@ class ExportManager {
                 const testsWorksheet = XLSX.utils.json_to_sheet(this.formatTestsForExport(filteredTests));
                 testsWorksheet['!cols'] = [
                     { wch: 12 }, { wch: 15 }, { wch: 10 }, 
-                    { wch: 50 }, { wch: 15 }, { wch: 20 }, { wch: 20 }
+                    { wch: 40 }, { wch: 15 }, { wch: 50 }, // Added column for file link
+                    { wch: 20 }, { wch: 20 }
                 ];
                 XLSX.utils.book_append_sheet(workbook, testsWorksheet, "Filtered Tests");
             }
@@ -239,6 +242,7 @@ class ExportManager {
             'Network': test.network,
             'Description': test.description,
             'Result': test.result,
+            'File Link': test.fileLink || 'No file attached', // Add file link column
             'Created By': test.createdBy,
             'Created At': this.formatExcelDateTime(test.createdAt)
         }));
@@ -631,3 +635,4 @@ class ExportManager {
 document.addEventListener('DOMContentLoaded', () => {
     new ExportManager();
 });
+
