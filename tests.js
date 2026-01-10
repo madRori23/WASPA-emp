@@ -20,6 +20,8 @@ class TestsManager {
 
     async handleTestSubmit(e) {
         e.preventDefault();
+
+        const fileLink = document.getElementById('testFileLink').value.trim();
         
         const testData = {
             date: document.getElementById('testDate').value,
@@ -27,6 +29,7 @@ class TestsManager {
             network: document.getElementById('testNet').value,
             description: document.getElementById('testDescription').value,
             result: document.getElementById('testResult').value
+            fileLink: fileLink || '' 
         };
 
         // Validate form
@@ -52,6 +55,17 @@ class TestsManager {
             this.showMessage('Please fill in all fields', 'error');
             return false;
         }
+        if (data.fileLink) {
+            try {
+                new URL(data.fileLink);
+                if (!data.fileLink.startsWith('http://') && !data.fileLink.startsWith('https://')) {
+                    this.showMessage('File link must start with http:// or https://', 'error');
+                    return false;
+                }
+            } catch (error) {
+                this.showMessage('Please enter a valid URL for the file link', 'error');
+                return false;
+            }
         return true;
     }
 
@@ -86,6 +100,14 @@ class TestsManager {
                 </div>
                 <div class="record-details">
                     <div class="record-description">${test.description}</div>
+                    ${test.fileLink ? `
+                        <div class="record-file-link">
+                            <i class="fas fa-link"></i> 
+                            <a href="${test.fileLink}" target="_blank" rel="noopener noreferrer">
+                                View Attached File
+                            </a>
+                        </div>
+                    ` : ''}
                     <div class="record-meta">
                         <span class="result-badge ${test.result.toLowerCase()}">${test.result}</span>
                         <span class="record-by">by ${test.createdBy}</span>
@@ -138,3 +160,4 @@ class TestsManager {
 document.addEventListener('DOMContentLoaded', () => {
     new TestsManager();
 });
+
