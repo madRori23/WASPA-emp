@@ -1,4 +1,4 @@
-// tests.js - Test management functionality with Firebase
+//Test management functionality with Firebase
 class TestsManager {
     constructor() {
         this.testForm = document.getElementById('testForm');
@@ -20,7 +20,7 @@ class TestsManager {
 
     async handleTestSubmit(e) {
         e.preventDefault();
-
+        
         const fileLink = document.getElementById('testFileLink').value.trim();
         
         const testData = {
@@ -28,8 +28,8 @@ class TestsManager {
             type: document.getElementById('testType').value,
             network: document.getElementById('testNet').value,
             description: document.getElementById('testDescription').value,
-            result: document.getElementById('testResult').value
-            fileLink: fileLink || '' 
+            result: document.getElementById('testResult').value,
+            fileLink: fileLink || '' // Add file link (empty string if not provided)
         };
 
         // Validate form
@@ -55,6 +55,8 @@ class TestsManager {
             this.showMessage('Please fill in all fields', 'error');
             return false;
         }
+        
+        // Validate file link if provided
         if (data.fileLink) {
             try {
                 new URL(data.fileLink);
@@ -67,6 +69,7 @@ class TestsManager {
                 return false;
             }
         }
+        
         return true;
     }
 
@@ -161,5 +164,3 @@ class TestsManager {
 document.addEventListener('DOMContentLoaded', () => {
     new TestsManager();
 });
-
-
