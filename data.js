@@ -47,13 +47,22 @@ class DataManager {
         // Wait for auth state to be determined
         return new Promise((resolve) => {
             auth.onAuthStateChanged(async (user) => {
-                console.log('🔐 Auth state changed:', user ? 'User logged in' : 'No user');
+                console.log('🔍 Auth state changed:', user ? 'User logged in' : 'No user');
                 if (user) {
+                    // Get user data from Firestore
+                    const userDoc = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+                    const userData = userDoc.data();
+                    
                     this.currentUser = {
                         uid: user.uid,
                         email: user.email,
-                        name: user.displayName || user.email.split('@')[0]
+                        name: user.displayName || userData?.name || user.email.split('@')[0],
+                        role: userData?.role || 'user',
+                        isManager: userData?.isManager || false
                     };
+                    
+                    console.log('👤 User loaded:', this.currentUser.email, '| Role:', this.currentUser.role);
+                    
                     await this.loadData();
                     this.setupRealTimeListeners();
                 } else {
@@ -133,6 +142,8 @@ class DataManager {
                 await db.collection(COLLECTIONS.USERS).doc(user.uid).set({
                     email: user.email,
                     name: user.displayName || user.email.split('@')[0],
+                    role: 'user', // Default role
+                    isManager: false, // Default not a manager
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -143,10 +154,14 @@ class DataManager {
                 });
             }
             
+            const userData = userDoc.exists ? userDoc.data() : { role: 'user', isManager: false };
+            
             return {
                 uid: user.uid,
                 email: user.email,
-                name: user.displayName || user.email.split('@')[0]
+                name: user.displayName || userData.name || user.email.split('@')[0],
+                role: userData.role || 'user',
+                isManager: userData.isManager || false
             };
         } catch (error) {
             console.error('❌ Authentication error:', error);
@@ -196,10 +211,12 @@ class DataManager {
             
             console.log('📝 Creating user document...');
             
-            // Create user document
+            // Create user document with default role
             await db.collection(COLLECTIONS.USERS).doc(user.uid).set({
                 email: user.email,
                 name: name,
+                role: 'user', // Default role
+                isManager: false, // Default not a manager
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 lastLogin: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -209,7 +226,9 @@ class DataManager {
             return {
                 uid: user.uid,
                 email: user.email,
-                name: name
+                name: name,
+                role: 'user',
+                isManager: false
             };
         } catch (error) {
             console.error('❌ Registration error:', {
@@ -264,6 +283,64 @@ class DataManager {
             console.log('✅ Logout successful');
         } catch (error) {
             console.error('❌ Logout error:', error);
+            throw error;
+        }
+    }
+
+    // Manager role methods
+    async setUserAsManager(userId, isManager = true) {
+        if (!this.currentUser) throw new Error('User not authenticated');
+        
+        // Optional: Check if current user is already a manager
+        // if (!this.currentUser.isManager) {
+        //     throw new Error('Only managers can assign manager roles');
+        // }
+        
+        try {
+            showLoading();
+            console.log(`🔧 Setting manager status for user ${userId} to: ${isManager}`);
+            
+            await db.collection(COLLECTIONS.USERS).doc(userId).update({
+                role: isManager ? 'manager' : 'user',
+                isManager: isManager,
+                managerSince: isManager ? firebase.firestore.FieldValue.serverTimestamp() : null
+            });
+            
+            console.log('✅ Manager status updated successfully');
+            
+            // If updating current user, update local data
+            if (userId === this.currentUser.uid) {
+                this.currentUser.role = isManager ? 'manager' : 'user';
+                this.currentUser.isManager = isManager;
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Error updating manager status:', error);
+            throw error;
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async getUserByEmail(email) {
+        try {
+            const usersSnapshot = await db.collection(COLLECTIONS.USERS)
+                .where('email', '==', email)
+                .limit(1)
+                .get();
+            
+            if (usersSnapshot.empty) {
+                return null;
+            }
+            
+            const userDoc = usersSnapshot.docs[0];
+            return {
+                id: userDoc.id,
+                ...userDoc.data()
+            };
+        } catch (error) {
+            console.error('❌ Error getting user by email:', error);
             throw error;
         }
     }
@@ -471,13 +548,14 @@ class DataManager {
 
     // Export methods (remain the same as they work with local data)
     exportTestsToCSV() {
-        const headers = ['Date', 'Type', 'Network', 'Description', 'Result', 'Created By'];
+        const headers = ['Date', 'Type', 'Network', 'Description', 'Result', 'File Link', 'Created By'];
         const csvData = this.tests.map(test => [
             test.date,
             test.type,
             test.network,
             `"${test.description.replace(/"/g, '""')}"`,
             test.result,
+            test.fileLink || '',
             test.createdBy
         ]);
         
@@ -561,5 +639,3 @@ try {
 } catch (error) {
     console.error('❌ DataManager creation failed:', error);
 }
-
-
