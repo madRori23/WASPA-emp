@@ -1311,3 +1311,146 @@ input[type="url"] {
         width: 100%;
     }
 }
+
+/* Admin Section Styles */
+.admin-card {
+    background: var(--secondary-black);
+    padding: 25px;
+    border-radius: 10px;
+    border: 1px solid var(--border-dark);
+    margin-bottom: 30px;
+}
+
+.admin-card h2 {
+    color: var(--accent-orange);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-dark);
+}
+
+.admin-description {
+    color: var(--text-gray);
+    margin-bottom: 30px;
+    font-size: 0.95rem;
+}
+
+.promote-user-section {
+    background: var(--primary-black);
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid var(--border-dark);
+    margin-bottom: 30px;
+}
+
+.promote-user-section h3 {
+    color: var(--accent-orange);
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+}
+
+.all-users-section {
+    background: var(--primary-black);
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid var(--border-dark);
+}
+
+.all-users-section h3 {
+    color: var(--accent-orange);
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+}
+
+.users-list-container {
+    overflow-x: auto;
+}
+
+.admin-users-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--secondary-black);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.admin-users-table thead {
+    background: var(--border-dark);
+}
+
+.admin-users-table th {
+    padding: 15px;
+    text-align: left;
+    color: var(--accent-orange);
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.admin-users-table tbody tr {
+    border-bottom: 1px solid var(--border-dark);
+    transition: background-color 0.2s;
+}
+
+.admin-users-table tbody tr:hover {
+    background: rgba(255, 107, 0, 0.05);
+}
+
+.admin-users-table td {
+    padding: 15px;
+    color: var(--text-light);
+    font-size: 14px;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.role-badge.manager {
+    background: rgba(255, 107, 0, 0.2);
+    color: var(--accent-orange);
+}
+
+.role-badge.user {
+    background: rgba(176, 176, 176, 0.2);
+    color: var(--text-gray);
+}
+
+.btn-promote {
+    background: var(--accent-orange);
+    color: var(--primary-black);
+}
+
+.btn-promote:hover {
+    background: #ff8c00;
+}
+
+.btn-demote {
+    background: transparent;
+    color: var(--accent-red);
+    border: 1px solid var(--accent-red);
+}
+
+.btn-demote:hover {
+    background: var(--accent-red);
+    color: var(--text-light);
+}
+
+@media (max-width: 768px) {
+    .admin-users-table {
+        font-size: 12px;
+    }
+
+    .admin-users-table th,
+    .admin-users-table td {
+        padding: 10px 8px;
+    }
+
+    .promote-user-section,
+    .all-users-section {
+        padding: 15px;
+    }
+}

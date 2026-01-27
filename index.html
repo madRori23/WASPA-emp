@@ -142,6 +142,7 @@
                     <button class="tab-btn" data-tab="upload">Upload Manual Tests</button>
                     <button class="tab-btn" data-tab="warnings">Email Warnings</button>
                     <button class="tab-btn" data-tab="export">Export Data</button>
+                    <button class="tab-btn" data-tab="admin">Admin</button>
                 </nav>
 
                 <!-- Tests Tab -->
@@ -620,6 +621,41 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Admin Tab -->
+                <div id="adminTab" class="tab-content">
+                    <div class="admin-card">
+                        <h2>User Management</h2>
+                        <p class="admin-description">Promote users to manager role to give them access to all users data and reports</p>
+
+                        <div class="promote-user-section">
+                            <h3>Promote User to Manager</h3>
+                            <form id="promoteUserForm">
+                                <div class="form-group">
+                                    <label for="promoteEmail">User Email</label>
+                                    <input type="email" id="promoteEmail" placeholder="user@waspa.org" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="promoteAction">Action</label>
+                                    <select id="promoteAction" required>
+                                        <option value="">Select Action</option>
+                                        <option value="promote">Promote to Manager</option>
+                                        <option value="demote">Demote to User</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update User Role</button>
+                            </form>
+                            <div id="adminMessage" class="message" style="display: none;"></div>
+                        </div>
+
+                        <div class="all-users-section">
+                            <h3>All Users</h3>
+                            <div id="allUsersList" class="users-list-container">
+                                <div class="loading-state">Loading users...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -641,6 +677,7 @@
     <script src="warnings.js"></script>
     <script src="export.js"></script>
     <script src="manager.js"></script>
+    <script src="admin.js"></script>
 </body>
 </html>
 
