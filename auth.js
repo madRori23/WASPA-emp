@@ -40,9 +40,11 @@ class AuthManager {
             dataManager.setCurrentUser(user);
             dataManager.setupRealTimeListeners();
 
-            this.showDashboard();
-            messageEl.textContent = '';
-            messageEl.className = 'message';
+            if (user.role === 'manager') {
+            window.location.href = 'manager-dashboard.html';
+            }   else {
+            window.location.href = 'dashboard.html';
+            }
 
         } catch (error) {
             console.error('Login error:', error);
@@ -134,3 +136,4 @@ class AuthManager {
 document.addEventListener('DOMContentLoaded', () => {
     new AuthManager();
 });
+
