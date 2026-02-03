@@ -88,16 +88,26 @@ class ManagerSystem {
     }
 
     async loadAllUsersData() {
-        const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
-        const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const users = await dataManager.getAllUsers();
+        
         this.userStats = users.map(u => ({ user: u }));
         this.updateManagerStats();
     }
 
     updateManagerStats() {
-        document.getElementById('totalUsers').textContent = this.userStats.length;
-        document.getElementById('totalTestsAll').textContent = 0;
-        document.getElementById('totalWarningsAll').textContent = 0;
+        const totalUsers = this.userStats.length;
+
+        let totalTest = 0;
+        let totalWarnings = 0;
+
+        this.userStats.forEach(u => {
+            totalTests += u.user.tests?.length || 0;
+            totalWarnings += u.user.warnings?.length || 0;
+        });
+
+        document.getElementById('totalUsers').textContent = totalUsers;
+        document.getElementById('totalTestsAll').textContent = totalTests;
+        document.getElementById('totalWarningsAll').textContent = totalWarnings;
     }
 }
 
@@ -105,3 +115,4 @@ let managerSystem;
 document.addEventListener('DOMContentLoaded', () => {
     managerSystem = new ManagerSystem();
 });
+
