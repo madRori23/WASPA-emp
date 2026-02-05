@@ -119,6 +119,111 @@ class DataManager {
         }
     }
 
+    // ====================================================================
+    // MANAGER-SPECIFIC METHODS - Load ALL data across all users
+    // ====================================================================
+    
+    isManager() {
+        return this.currentUser?.isManager === true || this.currentUser?.role === 'manager';
+    }
+
+    async getAllUsers() {
+        if (!this.isManager()) {
+            console.warn('⚠️ Access denied: Only managers can view all users');
+            return [];
+        }
+
+        try {
+            console.log('👥 Manager: Loading ALL users...');
+            const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
+            const users = usersSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            console.log(`✅ Manager: Loaded ${users.length} users`);
+            return users;
+        } catch (error) {
+            console.error('❌ Error loading all users:', error);
+            throw error;
+        }
+    }
+
+    async getAllTests() {
+        if (!this.isManager()) {
+            console.warn('⚠️ Access denied: Only managers can view all tests');
+            return [];
+        }
+
+        try {
+            console.log('🧪 Manager: Loading ALL tests...');
+            const testsSnapshot = await db.collection(COLLECTIONS.TESTS)
+                .orderBy('createdAt', 'desc')
+                .get();
+            const tests = testsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            console.log(`✅ Manager: Loaded ${tests.length} tests from all users`);
+            return tests;
+        } catch (error) {
+            console.error('❌ Error loading all tests:', error);
+            throw error;
+        }
+    }
+
+    async getAllWarnings() {
+        if (!this.isManager()) {
+            console.warn('⚠️ Access denied: Only managers can view all warnings');
+            return [];
+        }
+
+        try {
+            console.log('⚠️ Manager: Loading ALL warnings...');
+            const warningsSnapshot = await db.collection(COLLECTIONS.WARNINGS)
+                .orderBy('createdAt', 'desc')
+                .get();
+            const warnings = warningsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            console.log(`✅ Manager: Loaded ${warnings.length} warnings from all users`);
+            return warnings;
+        } catch (error) {
+            console.error('❌ Error loading all warnings:', error);
+            throw error;
+        }
+    }
+
+    async getAllData() {
+        if (!this.isManager()) {
+            console.warn('⚠️ Access denied: Only managers can view all data');
+            return { users: [], tests: [], warnings: [] };
+        }
+
+        try {
+            showLoading();
+            console.log('📊 Manager: Loading complete dataset...');
+            
+            const [users, tests, warnings] = await Promise.all([
+                this.getAllUsers(),
+                this.getAllTests(),
+                this.getAllWarnings()
+            ]);
+
+            console.log('✅ Manager: Complete dataset loaded');
+            return { users, tests, warnings };
+        } catch (error) {
+            console.error('❌ Error loading all data:', error);
+            throw error;
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // ====================================================================
+    // END MANAGER METHODS
+    // ====================================================================
+
     // User authentication methods
     async authenticateUser(email, password) {
         if (!this.firebaseReady) {
@@ -639,3 +744,17 @@ try {
 } catch (error) {
     console.error('❌ DataManager creation failed:', error);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
