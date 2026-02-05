@@ -67,14 +67,7 @@ class ManagerSystem {
     }
 
     isManager() {
-        const user = dataManager.getCurrentUser();
-        const isManager = user?.role === 'manager' || user?.isManager === true;
-        console.log(`🔍 ManagerSystem: Checking manager status - ${isManager ? 'YES' : 'NO'}`, {
-            email: user?.email,
-            role: user?.role,
-            isManager: user?.isManager
-        });
-        return isManager;
+        return dataManager.isManager();
     }
 
     createManagerDashboard() {
@@ -231,39 +224,16 @@ class ManagerSystem {
         
         try {
             showLoading();
-            console.log('📊 ManagerSystem: Loading all users data...');
+            console.log('📊 ManagerSystem: Loading all users data using DataManager methods...');
 
-            // Check if Firebase is available
-            if (!window.db || !window.COLLECTIONS) {
-                throw new Error('Firebase not initialized');
-            }
+            // Use the new DataManager methods
+            const allData = await dataManager.getAllData();
+            
+            const users = allData.users;
+            this.allTests = allData.tests;
+            this.allWarnings = allData.warnings;
 
-            // Load all users - NO FILTERING BY CURRENT USER
-            console.log('👥 Fetching all users...');
-            const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
-            const users = usersSnapshot.docs.map(doc => ({ 
-                id: doc.id, 
-                ...doc.data() 
-            }));
-            console.log(`✅ Found ${users.length} users:`, users.map(u => u.email));
-
-            // Load ALL tests - NO FILTERING BY CURRENT USER
-            console.log('🧪 Fetching all tests...');
-            const testsSnapshot = await db.collection(COLLECTIONS.TESTS).get();
-            this.allTests = testsSnapshot.docs.map(doc => ({ 
-                id: doc.id, 
-                ...doc.data() 
-            }));
-            console.log(`✅ Found ${this.allTests.length} tests`);
-
-            // Load ALL warnings - NO FILTERING BY CURRENT USER
-            console.log('⚠️ Fetching all warnings...');
-            const warningsSnapshot = await db.collection(COLLECTIONS.WARNINGS).get();
-            this.allWarnings = warningsSnapshot.docs.map(doc => ({ 
-                id: doc.id, 
-                ...doc.data() 
-            }));
-            console.log(`✅ Found ${this.allWarnings.length} warnings`);
+            console.log(`✅ Received ${users.length} users, ${this.allTests.length} tests, ${this.allWarnings.length} warnings`);
 
             // Build user stats
             this.userStats = users.map(user => {
