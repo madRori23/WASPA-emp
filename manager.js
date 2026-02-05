@@ -4,61 +4,95 @@ class ManagerSystem {
         this.selectedWeek = null;
         this.allTests = [];
         this.allWarnings = [];
+        this.isLoading = false;
         this.init();
     }
 
     async init() {
+        console.log('🎯 ManagerSystem: Starting initialization...');
+        
         await this.waitForDataManager();
         await this.waitForUser();
 
         if (!this.isManager()) {
-            console.log('User is not a manager, hiding manager features');
+            console.log('❌ ManagerSystem: User is not a manager, skipping initialization');
             return;
         }
 
-        console.log('✅ Manager detected, initializing manager dashboard');
-        this.createManagerDashboard();
-        this.activateManagerTab();
+        console.log('✅ ManagerSystem: Manager detected, setting up dashboard');
+        
+        // Give the DOM time to load
+        setTimeout(async () => {
+            this.createManagerDashboard();
+            await this.loadAllUsersData();
+        }, 500);
 
         // Listen for data changes
         dataManager.addListener(() => {
-            if (this.isManager()) {
+            if (this.isManager() && !this.isLoading) {
+                console.log('🔄 ManagerSystem: Data changed, reloading...');
                 this.loadAllUsersData();
             }
         });
-
-        // Initial load
-        await this.loadAllUsersData();
     }
 
     async waitForDataManager() {
-        while (!window.dataManager || !dataManager.isInitialized) {
+        let attempts = 0;
+        while ((!window.dataManager || !dataManager.isInitialized) && attempts < 100) {
             await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
         }
+        
+        if (!window.dataManager || !dataManager.isInitialized) {
+            console.error('❌ ManagerSystem: DataManager not available after waiting');
+            throw new Error('DataManager initialization timeout');
+        }
+        
+        console.log('✅ ManagerSystem: DataManager is ready');
     }
 
     async waitForUser() {
-        while (!dataManager.getCurrentUser()) {
+        let attempts = 0;
+        while (!dataManager.getCurrentUser() && attempts < 50) {
             await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
         }
+        
+        if (!dataManager.getCurrentUser()) {
+            console.error('❌ ManagerSystem: User not available after waiting');
+            throw new Error('User initialization timeout');
+        }
+        
+        console.log('✅ ManagerSystem: User is ready');
     }
 
     isManager() {
         const user = dataManager.getCurrentUser();
-        return user?.role === 'manager' || user?.isManager === true;
+        const isManager = user?.role === 'manager' || user?.isManager === true;
+        console.log(`🔍 ManagerSystem: Checking manager status - ${isManager ? 'YES' : 'NO'}`, {
+            email: user?.email,
+            role: user?.role,
+            isManager: user?.isManager
+        });
+        return isManager;
     }
 
     createManagerDashboard() {
+        console.log('🎨 ManagerSystem: Creating dashboard UI...');
+        
         // Check if manager tab already exists
         if (document.querySelector('[data-tab="manager"]')) {
-            console.log('Manager tab already exists');
+            console.log('ℹ️ ManagerSystem: Manager tab already exists');
             return;
         }
 
-        console.log('Creating manager dashboard UI');
-
         // Add manager tab button
         const tabs = document.querySelector('.tabs');
+        if (!tabs) {
+            console.error('❌ ManagerSystem: Tabs container not found');
+            return;
+        }
+
         const managerTab = document.createElement('button');
         managerTab.className = 'tab-btn';
         managerTab.dataset.tab = 'manager';
@@ -72,10 +106,22 @@ class ManagerSystem {
             tabs.appendChild(managerTab);
         }
 
-        // Add manager tab content if it doesn't exist
+        // Add click handler for tab switching
+        managerTab.addEventListener('click', () => {
+            // Remove active from all tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Activate manager tab
+            managerTab.classList.add('active');
+            document.getElementById('managerTab').classList.add('active');
+        });
+
+        // Add or update manager tab content
         let managerContent = document.getElementById('managerTab');
+        const mainContent = document.querySelector('.main-content .container');
+        
         if (!managerContent) {
-            const mainContent = document.querySelector('.main-content .container');
             managerContent = document.createElement('div');
             managerContent.id = 'managerTab';
             managerContent.className = 'tab-content';
@@ -84,13 +130,8 @@ class ManagerSystem {
 
         managerContent.innerHTML = this.getManagerDashboardHTML();
         this.setupManagerEventListeners();
-    }
-
-    activateManagerTab() {
-        const tab = document.querySelector('[data-tab="manager"]');
-        if (tab) {
-            tab.click();
-        }
+        
+        console.log('✅ ManagerSystem: Dashboard UI created');
     }
 
     getManagerDashboardHTML() {
@@ -141,6 +182,9 @@ class ManagerSystem {
                             <option value="manager">Managers Only</option>
                             <option value="user">Users Only</option>
                         </select>
+                        <button id="refreshManagerData" class="btn btn-secondary" style="padding: 12px 20px;">
+                            🔄 Refresh Data
+                        </button>
                     </div>
                 </div>
 
@@ -166,44 +210,67 @@ class ManagerSystem {
         if (roleFilter) {
             roleFilter.addEventListener('change', () => this.filterUsers());
         }
+
+        // Refresh button
+        const refreshBtn = document.getElementById('refreshManagerData');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                console.log('🔄 Manual refresh triggered');
+                this.loadAllUsersData();
+            });
+        }
     }
 
     async loadAllUsersData() {
+        if (this.isLoading) {
+            console.log('⏭️ ManagerSystem: Already loading, skipping...');
+            return;
+        }
+
+        this.isLoading = true;
+        
         try {
             showLoading();
-            console.log('📊 Loading all users data...');
+            console.log('📊 ManagerSystem: Loading all users data...');
 
-            // Load all users
+            // Check if Firebase is available
+            if (!window.db || !window.COLLECTIONS) {
+                throw new Error('Firebase not initialized');
+            }
+
+            // Load all users - NO FILTERING BY CURRENT USER
+            console.log('👥 Fetching all users...');
             const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
             const users = usersSnapshot.docs.map(doc => ({ 
                 id: doc.id, 
                 ...doc.data() 
             }));
+            console.log(`✅ Found ${users.length} users:`, users.map(u => u.email));
 
-            console.log(`Found ${users.length} users`);
-
-            // Load all tests
+            // Load ALL tests - NO FILTERING BY CURRENT USER
+            console.log('🧪 Fetching all tests...');
             const testsSnapshot = await db.collection(COLLECTIONS.TESTS).get();
             this.allTests = testsSnapshot.docs.map(doc => ({ 
                 id: doc.id, 
                 ...doc.data() 
             }));
+            console.log(`✅ Found ${this.allTests.length} tests`);
 
-            console.log(`Found ${this.allTests.length} tests`);
-
-            // Load all warnings
+            // Load ALL warnings - NO FILTERING BY CURRENT USER
+            console.log('⚠️ Fetching all warnings...');
             const warningsSnapshot = await db.collection(COLLECTIONS.WARNINGS).get();
             this.allWarnings = warningsSnapshot.docs.map(doc => ({ 
                 id: doc.id, 
                 ...doc.data() 
             }));
-
-            console.log(`Found ${this.allWarnings.length} warnings`);
+            console.log(`✅ Found ${this.allWarnings.length} warnings`);
 
             // Build user stats
             this.userStats = users.map(user => {
                 const userTests = this.allTests.filter(test => test.userId === user.id);
                 const userWarnings = this.allWarnings.filter(warning => warning.userId === user.id);
+
+                console.log(`📊 User ${user.email}: ${userTests.length} tests, ${userWarnings.length} warnings`);
 
                 return {
                     user: user,
@@ -215,15 +282,29 @@ class ManagerSystem {
                 };
             });
 
+            console.log('✅ ManagerSystem: User stats built:', this.userStats.length);
+
             this.updateManagerStats();
             this.renderUsersTable();
 
         } catch (error) {
-            console.error('❌ Error loading manager data:', error);
-            document.getElementById('usersTable').innerHTML = 
-                '<div class="error-state">Failed to load user data. Please refresh the page.</div>';
+            console.error('❌ ManagerSystem: Error loading data:', error);
+            const container = document.getElementById('usersTable');
+            if (container) {
+                container.innerHTML = `
+                    <div class="error-state">
+                        <p>❌ Failed to load user data</p>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">Error: ${error.message}</p>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">Check console for details</p>
+                        <button onclick="managerSystem.loadAllUsersData()" class="btn btn-primary" style="margin-top: 15px;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
         } finally {
             hideLoading();
+            this.isLoading = false;
         }
     }
 
@@ -235,7 +316,6 @@ class ManagerSystem {
 
         if (allActivities.length === 0) return null;
 
-        // Convert Firestore timestamps to dates and find the most recent
         const dates = allActivities.map(activity => {
             if (activity?.toDate) {
                 return activity.toDate();
@@ -250,18 +330,27 @@ class ManagerSystem {
     }
 
     updateManagerStats() {
-        document.getElementById('totalUsers').textContent = this.userStats.length;
-        document.getElementById('totalTestsAll').textContent = this.allTests.length;
-        document.getElementById('totalWarningsAll').textContent = this.allWarnings.length;
-
-        // Calculate unique active days across all tests
+        console.log('📈 Updating manager stats...');
+        
+        const totalUsers = this.userStats.length;
+        const totalTests = this.allTests.length;
+        const totalWarnings = this.allWarnings.length;
         const uniqueDates = new Set(this.allTests.map(test => test.date));
-        document.getElementById('activeDaysAll').textContent = uniqueDates.size;
+        const activeDays = uniqueDates.size;
+
+        console.log('Stats:', { totalUsers, totalTests, totalWarnings, activeDays });
+
+        document.getElementById('totalUsers').textContent = totalUsers;
+        document.getElementById('totalTestsAll').textContent = totalTests;
+        document.getElementById('totalWarningsAll').textContent = totalWarnings;
+        document.getElementById('activeDaysAll').textContent = activeDays;
     }
 
     filterUsers() {
         const searchTerm = document.getElementById('userSearchInput')?.value.toLowerCase() || '';
         const roleFilter = document.getElementById('roleFilter')?.value || 'all';
+
+        console.log('🔍 Filtering users:', { searchTerm, roleFilter });
 
         const filtered = this.userStats.filter(stat => {
             const matchesSearch = !searchTerm || 
@@ -275,18 +364,26 @@ class ManagerSystem {
             return matchesSearch && matchesRole;
         });
 
+        console.log(`✅ Filtered to ${filtered.length} users`);
         this.renderUsersTable(filtered);
     }
 
     renderUsersTable(users = this.userStats) {
         const container = document.getElementById('usersTable');
         
-        if (users.length === 0) {
-            container.innerHTML = '<div class="empty-state">No users found</div>';
+        if (!container) {
+            console.error('❌ usersTable container not found');
             return;
         }
 
-        // Sort by last activity (most recent first)
+        console.log(`🎨 Rendering ${users.length} user cards...`);
+        
+        if (users.length === 0) {
+            container.innerHTML = '<div class="empty-state">No users found matching your criteria</div>';
+            return;
+        }
+
+        // Sort by last activity
         const sortedUsers = [...users].sort((a, b) => {
             if (!a.lastActivity) return 1;
             if (!b.lastActivity) return -1;
@@ -299,7 +396,7 @@ class ManagerSystem {
             </div>
         `;
 
-        // Add click handlers for expanding user details
+        // Add expand/collapse handlers
         sortedUsers.forEach((stat, index) => {
             const card = container.querySelectorAll('.user-card')[index];
             const expandBtn = card?.querySelector('.expand-btn');
@@ -313,6 +410,8 @@ class ManagerSystem {
                 });
             }
         });
+
+        console.log('✅ User cards rendered successfully');
     }
 
     renderUserCard(stat) {
@@ -433,7 +532,9 @@ class ManagerSystem {
     }
 }
 
+// Initialize manager system
 let managerSystem;
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 DOM loaded, creating ManagerSystem...');
     managerSystem = new ManagerSystem();
 });
