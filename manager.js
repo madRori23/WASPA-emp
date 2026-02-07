@@ -5,93 +5,134 @@ class ManagerSystem {
         this.allTests = [];
         this.allWarnings = [];
         this.isLoading = false;
-        this.init();
+        this.initAttempts = 0;
+        this.maxInitAttempts = 200; // Wait up to 20 seconds
+        
+        // Don't initialize immediately - wait for everything to be ready
+        console.log('🎯 ManagerSystem: Constructor called, scheduling initialization...');
+        this.scheduleInit();
+    }
+
+    scheduleInit() {
+        // Wait a bit before starting initialization
+        setTimeout(() => {
+            this.init().catch(error => {
+                console.error('❌ ManagerSystem initialization failed:', error);
+            });
+        }, 1000); // Wait 1 second before even trying
     }
 
     async init() {
         console.log('🎯 ManagerSystem: Starting initialization...');
         
-        await this.waitForDataManager();
-        await this.waitForUser();
+        try {
+            await this.waitForDataManager();
+            await this.waitForUser();
 
-        if (!this.isManager()) {
-            console.log('❌ ManagerSystem: User is not a manager, skipping initialization');
-            return;
-        }
+            if (!this.isManager()) {
+                console.log('ℹ️ ManagerSystem: User is not a manager, skipping dashboard creation');
+                return;
+            }
 
-        console.log('✅ ManagerSystem: Manager detected, setting up dashboard');
-        
-        // Give the DOM time to load
-        setTimeout(async () => {
+            console.log('✅ ManagerSystem: Manager detected, setting up dashboard');
+            
+            // Give the DOM more time to be ready
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
             this.createManagerDashboard();
             await this.loadAllUsersData();
-        }, 500);
 
-        // Listen for data changes
-        dataManager.addListener(() => {
-            if (this.isManager() && !this.isLoading) {
-                console.log('🔄 ManagerSystem: Data changed, reloading...');
-                this.loadAllUsersData();
-            }
-        });
+            // Listen for data changes
+            dataManager.addListener(() => {
+                if (this.isManager() && !this.isLoading) {
+                    console.log('🔄 ManagerSystem: Data changed, reloading...');
+                    this.loadAllUsersData();
+                }
+            });
+            
+            console.log('✅ ManagerSystem: Initialization complete!');
+            
+        } catch (error) {
+            console.error('❌ ManagerSystem: Initialization error:', error);
+        }
     }
 
     async waitForDataManager() {
-        let attempts = 0;
-        while ((!window.dataManager || !dataManager.isInitialized) && attempts < 100) {
+        console.log('⏳ Waiting for DataManager...');
+        
+        while (this.initAttempts < this.maxInitAttempts) {
+            this.initAttempts++;
+            
+            if (window.dataManager && dataManager.isInitialized) {
+                console.log(`✅ DataManager ready after ${this.initAttempts} attempts`);
+                return;
+            }
+            
+            if (this.initAttempts % 10 === 0) {
+                console.log(`⏳ Still waiting for DataManager... (${this.initAttempts}/${this.maxInitAttempts})`);
+            }
+            
             await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
         }
         
-        if (!window.dataManager || !dataManager.isInitialized) {
-            console.error('❌ ManagerSystem: DataManager not available after waiting');
-            throw new Error('DataManager initialization timeout');
-        }
-        
-        console.log('✅ ManagerSystem: DataManager is ready');
+        throw new Error('DataManager initialization timeout - not available after 20 seconds');
     }
 
     async waitForUser() {
+        console.log('⏳ Waiting for user...');
         let attempts = 0;
-        while (!dataManager.getCurrentUser() && attempts < 50) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+        
+        while (attempts < 100) {
             attempts++;
+            
+            const user = dataManager.getCurrentUser();
+            if (user) {
+                console.log(`✅ User ready: ${user.email}`);
+                return;
+            }
+            
+            if (attempts % 10 === 0) {
+                console.log(`⏳ Still waiting for user... (${attempts}/100)`);
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
         
-        if (!dataManager.getCurrentUser()) {
-            console.error('❌ ManagerSystem: User not available after waiting');
-            throw new Error('User initialization timeout');
-        }
-        
-        console.log('✅ ManagerSystem: User is ready');
+        throw new Error('User initialization timeout');
     }
 
     isManager() {
+        if (!window.dataManager || typeof dataManager.isManager !== 'function') {
+            return false;
+        }
         return dataManager.isManager();
     }
 
     createManagerDashboard() {
-        console.log('🎨 ManagerSystem: Creating dashboard UI...');
+        console.log('🎨 Creating manager dashboard UI...');
         
-        // Check if manager tab already exists
+        // Check if already exists
         if (document.querySelector('[data-tab="manager"]')) {
-            console.log('ℹ️ ManagerSystem: Manager tab already exists');
+            console.log('ℹ️ Manager tab already exists, skipping creation');
             return;
         }
 
-        // Add manager tab button
+        // Find tabs container
         const tabs = document.querySelector('.tabs');
         if (!tabs) {
-            console.error('❌ ManagerSystem: Tabs container not found');
+            console.error('❌ Tabs container not found! Cannot create manager tab.');
+            // Try again in 1 second
+            setTimeout(() => this.createManagerDashboard(), 1000);
             return;
         }
 
+        // Create tab button
         const managerTab = document.createElement('button');
         managerTab.className = 'tab-btn';
         managerTab.dataset.tab = 'manager';
         managerTab.innerHTML = '👥 Manager Dashboard';
         
-        // Insert before admin tab
+        // Insert before admin tab if it exists
         const adminTab = document.querySelector('[data-tab="admin"]');
         if (adminTab) {
             tabs.insertBefore(managerTab, adminTab);
@@ -99,18 +140,15 @@ class ManagerSystem {
             tabs.appendChild(managerTab);
         }
 
-        // Add click handler for tab switching
+        // Add click handler
         managerTab.addEventListener('click', () => {
-            // Remove active from all tabs
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Activate manager tab
             managerTab.classList.add('active');
             document.getElementById('managerTab').classList.add('active');
         });
 
-        // Add or update manager tab content
+        // Create or update tab content
         let managerContent = document.getElementById('managerTab');
         const mainContent = document.querySelector('.main-content .container');
         
@@ -124,7 +162,7 @@ class ManagerSystem {
         managerContent.innerHTML = this.getManagerDashboardHTML();
         this.setupManagerEventListeners();
         
-        console.log('✅ ManagerSystem: Dashboard UI created');
+        console.log('✅ Manager dashboard UI created successfully');
     }
 
     getManagerDashboardHTML() {
@@ -192,19 +230,16 @@ class ManagerSystem {
     }
 
     setupManagerEventListeners() {
-        // Search filter
         const searchInput = document.getElementById('userSearchInput');
         if (searchInput) {
             searchInput.addEventListener('input', () => this.filterUsers());
         }
 
-        // Role filter
         const roleFilter = document.getElementById('roleFilter');
         if (roleFilter) {
             roleFilter.addEventListener('change', () => this.filterUsers());
         }
 
-        // Refresh button
         const refreshBtn = document.getElementById('refreshManagerData');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => {
@@ -216,7 +251,7 @@ class ManagerSystem {
 
     async loadAllUsersData() {
         if (this.isLoading) {
-            console.log('⏭️ ManagerSystem: Already loading, skipping...');
+            console.log('⏭️ Already loading, skipping...');
             return;
         }
 
@@ -224,23 +259,26 @@ class ManagerSystem {
         
         try {
             showLoading();
-            console.log('📊 ManagerSystem: Loading all users data using DataManager methods...');
+            console.log('📊 Loading all users data via DataManager...');
 
-            // Use the new DataManager methods
+            // Verify DataManager has the method
+            if (typeof dataManager.getAllData !== 'function') {
+                throw new Error('DataManager.getAllData method not found. Make sure you have the updated data.js file.');
+            }
+
+            // Use the new DataManager method
             const allData = await dataManager.getAllData();
             
             const users = allData.users;
             this.allTests = allData.tests;
             this.allWarnings = allData.warnings;
 
-            console.log(`✅ Received ${users.length} users, ${this.allTests.length} tests, ${this.allWarnings.length} warnings`);
+            console.log(`✅ Loaded: ${users.length} users, ${this.allTests.length} tests, ${this.allWarnings.length} warnings`);
 
             // Build user stats
             this.userStats = users.map(user => {
                 const userTests = this.allTests.filter(test => test.userId === user.id);
                 const userWarnings = this.allWarnings.filter(warning => warning.userId === user.id);
-
-                console.log(`📊 User ${user.email}: ${userTests.length} tests, ${userWarnings.length} warnings`);
 
                 return {
                     user: user,
@@ -252,22 +290,26 @@ class ManagerSystem {
                 };
             });
 
-            console.log('✅ ManagerSystem: User stats built:', this.userStats.length);
+            console.log('✅ User stats built:', this.userStats.length);
 
             this.updateManagerStats();
             this.renderUsersTable();
 
         } catch (error) {
-            console.error('❌ ManagerSystem: Error loading data:', error);
+            console.error('❌ Error loading manager data:', error);
             const container = document.getElementById('usersTable');
             if (container) {
                 container.innerHTML = `
-                    <div class="error-state">
-                        <p>❌ Failed to load user data</p>
-                        <p style="color: var(--text-gray); font-size: 0.9rem;">Error: ${error.message}</p>
-                        <p style="color: var(--text-gray); font-size: 0.9rem;">Check console for details</p>
-                        <button onclick="managerSystem.loadAllUsersData()" class="btn btn-primary" style="margin-top: 15px;">
-                            Retry
+                    <div class="error-state" style="padding: 40px; text-align: center;">
+                        <h3 style="color: var(--accent-red); margin-bottom: 15px;">❌ Failed to Load Data</h3>
+                        <p style="color: var(--text-gray); margin-bottom: 10px;">Error: ${error.message}</p>
+                        <p style="color: var(--text-gray); margin-bottom: 20px; font-size: 0.9rem;">
+                            ${error.message.includes('getAllData') ? 
+                                'Make sure you have replaced data.js with the updated version that includes manager methods.' :
+                                'Check browser console for more details.'}
+                        </p>
+                        <button onclick="managerSystem.loadAllUsersData()" class="btn btn-primary">
+                            🔄 Retry
                         </button>
                     </div>
                 `;
@@ -287,28 +329,22 @@ class ManagerSystem {
         if (allActivities.length === 0) return null;
 
         const dates = allActivities.map(activity => {
-            if (activity?.toDate) {
-                return activity.toDate();
-            } else if (activity?.seconds) {
-                return new Date(activity.seconds * 1000);
-            } else {
-                return new Date(activity);
-            }
+            if (activity?.toDate) return activity.toDate();
+            if (activity?.seconds) return new Date(activity.seconds * 1000);
+            return new Date(activity);
         });
 
         return new Date(Math.max(...dates));
     }
 
     updateManagerStats() {
-        console.log('📈 Updating manager stats...');
-        
         const totalUsers = this.userStats.length;
         const totalTests = this.allTests.length;
         const totalWarnings = this.allWarnings.length;
         const uniqueDates = new Set(this.allTests.map(test => test.date));
         const activeDays = uniqueDates.size;
 
-        console.log('Stats:', { totalUsers, totalTests, totalWarnings, activeDays });
+        console.log('📈 Stats:', { totalUsers, totalTests, totalWarnings, activeDays });
 
         document.getElementById('totalUsers').textContent = totalUsers;
         document.getElementById('totalTestsAll').textContent = totalTests;
@@ -319,8 +355,6 @@ class ManagerSystem {
     filterUsers() {
         const searchTerm = document.getElementById('userSearchInput')?.value.toLowerCase() || '';
         const roleFilter = document.getElementById('roleFilter')?.value || 'all';
-
-        console.log('🔍 Filtering users:', { searchTerm, roleFilter });
 
         const filtered = this.userStats.filter(stat => {
             const matchesSearch = !searchTerm || 
@@ -334,7 +368,6 @@ class ManagerSystem {
             return matchesSearch && matchesRole;
         });
 
-        console.log(`✅ Filtered to ${filtered.length} users`);
         this.renderUsersTable(filtered);
     }
 
@@ -345,15 +378,12 @@ class ManagerSystem {
             console.error('❌ usersTable container not found');
             return;
         }
-
-        console.log(`🎨 Rendering ${users.length} user cards...`);
         
         if (users.length === 0) {
-            container.innerHTML = '<div class="empty-state">No users found matching your criteria</div>';
+            container.innerHTML = '<div class="empty-state">No users found</div>';
             return;
         }
 
-        // Sort by last activity
         const sortedUsers = [...users].sort((a, b) => {
             if (!a.lastActivity) return 1;
             if (!b.lastActivity) return -1;
@@ -380,8 +410,6 @@ class ManagerSystem {
                 });
             }
         });
-
-        console.log('✅ User cards rendered successfully');
     }
 
     renderUserCard(stat) {
@@ -482,15 +510,10 @@ class ManagerSystem {
         if (!date) return 'N/A';
 
         let dateObj;
-        if (date.toDate) {
-            dateObj = date.toDate();
-        } else if (date.seconds) {
-            dateObj = new Date(date.seconds * 1000);
-        } else if (typeof date === 'string') {
-            dateObj = new Date(date);
-        } else {
-            dateObj = date;
-        }
+        if (date.toDate) dateObj = date.toDate();
+        else if (date.seconds) dateObj = new Date(date.seconds * 1000);
+        else if (typeof date === 'string') dateObj = new Date(date);
+        else dateObj = date;
 
         return dateObj.toLocaleDateString('en-US', {
             year: 'numeric',
@@ -502,9 +525,17 @@ class ManagerSystem {
     }
 }
 
-// Initialize manager system
+// Initialize manager system - but don't rush it
 let managerSystem;
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 DOM loaded, creating ManagerSystem...');
+
+// Wait for DOM to be fully loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('🚀 DOM loaded, creating ManagerSystem...');
+        managerSystem = new ManagerSystem();
+    });
+} else {
+    // DOM already loaded
+    console.log('🚀 DOM already loaded, creating ManagerSystem...');
     managerSystem = new ManagerSystem();
-});
+}
