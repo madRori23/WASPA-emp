@@ -39,8 +39,8 @@ try {
     
     console.log('✅ Firebase services initialized');
     
-    // Test connection with error handling
-    testFirebaseConnection();
+    // Test connection with error handling - run with delay
+    setTimeout(() => testFirebaseConnection(), 1000);
     
 } catch (error) {
     console.error('❌ Firebase initialization failed:', error);
@@ -51,44 +51,69 @@ async function testFirebaseConnection() {
     try {
         console.log('🧪 Testing Firebase connection...');
         
-        // Use a simpler test approach
+        // Add a timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Connection test timeout')), 5000);
+        });
+        
         const testRef = db.collection('connectionTests').doc('test_connection');
         
-        // Try a simple write operation
-        await testRef.set({
-            test: true,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            message: 'Connection test from WASPA portal',
-            testId: Date.now()
-        });
+        // Use Promise.race to prevent hanging
+        await Promise.race([
+            testRef.set({
+                test: true,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                message: 'Connection test from WASPA portal',
+                testId: Date.now()
+            }),
+            timeoutPromise
+        ]);
         
         console.log('✅ Firebase connection test PASSED - Document written');
         
-        // Try to read it back
-        const docSnap = await testRef.get();
-        if (docSnap.exists) {
-            console.log('✅ Firebase read test PASSED');
-        } else {
-            console.log('❌ Firebase read test FAILED');
+        // Try to read it back with timeout
+        try {
+            const readPromise = testRef.get();
+            const readTimeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Read timeout')), 3000);
+            });
+            
+            const docSnap = await Promise.race([readPromise, readTimeoutPromise]);
+            if (docSnap.exists) {
+                console.log('✅ Firebase read test PASSED');
+            } else {
+                console.log('⚠️ Firebase document not found');
+            }
+        } catch (readError) {
+            console.log('⚠️ Firebase read test skipped:', readError.message);
         }
         
-        // Clean up test document
-        await testRef.delete();
-        console.log('🧹 Test document cleaned up');
+        // Clean up test document with timeout
+        try {
+            const deletePromise = testRef.delete();
+            const deleteTimeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Delete timeout')), 3000);
+            });
+            
+            await Promise.race([deletePromise, deleteTimeoutPromise]);
+            console.log('🧹 Test document cleaned up');
+        } catch (deleteError) {
+            console.log('⚠️ Test document cleanup skipped:', deleteError.message);
+        }
         
     } catch (error) {
-        console.error('❌ Firebase connection test FAILED:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
+        console.error('❌ Firebase connection test had issues:', error.name, error.message);
         
-        // Provide specific guidance
-        if (error.code === 'permission-denied') {
-            console.error('💡 SOLUTION: Update Firestore security rules in Firebase Console');
-            console.error('💡 Go to: Firebase Console > Firestore > Rules');
-            console.error('💡 Replace with temporary rules to allow read/write');
-            
-            // Show user-friendly message
-            showFirebaseErrorToUser();
+        // Don't show error if it's just a timeout
+        if (error.message !== 'Connection test timeout') {
+            // Provide specific guidance
+            if (error.code === 'permission-denied') {
+                console.error('💡 SOLUTION: Update Firestore security rules in Firebase Console');
+                console.error('💡 Go to: Firebase Console > Firestore > Rules');
+                
+                // Show user-friendly message
+                showFirebaseErrorToUser();
+            }
         }
     }
 }
