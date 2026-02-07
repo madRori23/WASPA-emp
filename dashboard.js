@@ -18,8 +18,8 @@ class DashboardManager {
             this.setDefaultDates();
             
             // Update stats when data changes
-            if (window.dataManager) {
-                dataManager.addListener(() => {
+            if (window.DataManager) {
+                DataManager.addListener(() => {
                     this.updateStats();
                 });
                 
@@ -29,8 +29,8 @@ class DashboardManager {
                 console.warn('⚠️ dataManager not available yet');
                 // Try to update stats later
                 setTimeout(() => {
-                    if (window.dataManager) {
-                        dataManager.addListener(() => {
+                    if (window.DataManager) {
+                        DataManager.addListener(() => {
                             this.updateStats();
                         });
                         this.updateStats();
@@ -219,3 +219,4 @@ function initDashboardManager() {
 
 // Start initialization
 initDashboardManager();
+
